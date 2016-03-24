@@ -1,4 +1,6 @@
 apply plugin: 'com.android.application'
+apply plugin: 'maven'
+
 
 android {
     compileSdkVersion 21
@@ -27,7 +29,8 @@ dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
     compile project(':fotolib2')
 
-    compile project(':k3b-geoHelper')
+    // compile project(':k3b-geoHelper')
+	compile 'com.github.k3b:k3b-geoHelper:v1.1.2'
 
     // zoomable image view
     // from https://github.com/chrisbanes/PhotoView
