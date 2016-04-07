@@ -52,6 +52,10 @@ import de.k3b.geo.io.GeoUri;
 import de.k3b.io.GalleryFilterParameter;
 import de.k3b.io.GeoRectangle;
 
+/**
+ * An activity that displays a map-Viewer and that can also
+ * be used as a "geo:" or "geoarea:" picker.
+ */
 public class MapGeoPickerActivity extends LocalizedActivity implements Common {
     private static final String debugPrefix = "GalM-";
     private static final String STATE_Filter = "filterMap";
@@ -65,34 +69,67 @@ public class MapGeoPickerActivity extends LocalizedActivity implements Common {
 
     private GalleryFilterParameter mFilter;
     private GeoUri mGeoUriParser = new GeoUri(GeoUri.OPT_PARSE_INFER_MISSING);
+    private GeoPointDto[] mGeoArea = null;
 
-    public static void showActivity(Activity context, SelectedItems selectedItems) {
+    /**
+     *
+     * @param context
+     * @param title if not null the activity caption
+     * @param filterSql if not null the filter that limits the red photo markers in the map
+     * @param selectedBlueItemIds if not null the ids of the the blue photo marker in the map
+     * @param initalRedSelectionGeoUriString if not null the geo-uri of the red selection marker. if null the first of selectedItems is used.
+     * @param requestCode if not 0 map is started as PICKER returing a result.
+     */
+    public static void showActivity(Activity context,
+                                    String title, String filterSql,
+                                    SelectedItems selectedBlueItemIds,
+                                    String initalRedSelectionGeoUriString, int requestCode) {
         Uri initalUri = null;
         final Intent intent = new Intent().setClass(context,
                 MapGeoPickerActivity.class);
 
-        if ((selectedItems != null) && (selectedItems.size() > 0)) {
-            intent.putExtra(EXTRA_SELECTED_ITEMS, selectedItems.toString());
+        if ((selectedBlueItemIds != null) && (selectedBlueItemIds.size() > 0)) {
+            intent.putExtra(EXTRA_SELECTED_ITEMS, selectedBlueItemIds.toString());
 
-            IGeoPoint initialPoint = FotoSql.execGetPosition(context, selectedItems.first().intValue());
-            if (initialPoint != null) {
-                GeoUri PARSER = new GeoUri(GeoUri.OPT_PARSE_INFER_MISSING);
+            // use initalSelection[0] as initalSelection
+            if ((initalRedSelectionGeoUriString == null) || (initalRedSelectionGeoUriString.length() == 0)) {
+                IGeoPoint initialPoint = FotoSql.execGetPosition(context, selectedBlueItemIds.first().intValue());
+                if (initialPoint != null) {
+                    GeoUri PARSER = new GeoUri(GeoUri.OPT_PARSE_INFER_MISSING);
 
-                initalUri = Uri.parse(PARSER.toUriString(initialPoint.getLatitude(),initialPoint.getLongitude(), IGeoPointInfo.NO_ZOOM));
-                intent.setData(initalUri);
+                    initalRedSelectionGeoUriString = PARSER.toUriString(initialPoint.getLatitude(),initialPoint.getLongitude(), IGeoPointInfo.NO_ZOOM);
+                }
             }
+        }
+
+        if ((initalRedSelectionGeoUriString != null) && (initalRedSelectionGeoUriString.length() > 0)) {
+            initalUri = Uri.parse(initalRedSelectionGeoUriString);
+            intent.setData(initalUri);
+        }
+
+        if ((title != null) && (title.length() > 0)) {
+            intent.putExtra(Intent.EXTRA_TITLE, title);
+        }
+
+        if ((filterSql != null) && (filterSql.length() > 0)) {
+            intent.putExtra(EXTRA_FILTER, filterSql);
+        } else {
             GalleryFilterParameter filter = new GalleryFilterParameter();
             filter.setNonGeoOnly(true);
             intent.putExtra(EXTRA_FILTER, filter.toString());
         }
 
-        intent.setAction(Intent.ACTION_VIEW);
         if (Global.debugEnabled) {
             Log.d(Global.LOG_CONTEXT, context.getClass().getSimpleName()
                     + " > MapGeoPickerActivity.showActivity@" + initalUri);
         }
-
-        context.startActivity(intent);
+        if (requestCode != 0) {
+            intent.setAction(Intent.ACTION_PICK);
+            context.startActivityForResult(intent, requestCode);
+        } else {
+            intent.setAction(Intent.ACTION_VIEW);
+            context.startActivity(intent);
+        }
     }
 
 
@@ -103,9 +140,10 @@ public class MapGeoPickerActivity extends LocalizedActivity implements Common {
         SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
         Intent intent = this.getIntent();
 
+        // this may also set this.mGeoArea
         GeoPointDto geoPointFromIntent = getGeoPointDtoFromIntent(intent);
         // no geo: from intent: use last used value
-        mSaveLastUsedGeoToSharedPrefs = (geoPointFromIntent == null);
+        mSaveLastUsedGeoToSharedPrefs = ((geoPointFromIntent == null) && (this.mGeoArea == null));
 
         String lastGeoUri = sharedPref.getString(STATE_LAST_GEO, "geo:53,8?z=6");
         IGeoPointInfo lastGeo = mGeoUriParser.fromUri(lastGeoUri);
@@ -117,6 +155,13 @@ public class MapGeoPickerActivity extends LocalizedActivity implements Common {
         }
 
         IGeoPointInfo initalZoom = (mSaveLastUsedGeoToSharedPrefs) ? lastGeo : geoPointFromIntent;
+/*
+        !!!!
+        if (this.mGeoArea == null) {
+        } else {
+            this.mGeoArea =>
+        }
+*/
 
         String extraTitle = intent.getStringExtra(EXTRA_TITLE);
         if (extraTitle == null && (geoPointFromIntent == null)) {
@@ -286,7 +331,11 @@ public class MapGeoPickerActivity extends LocalizedActivity implements Common {
             Toast.makeText(this, getString(R.string.app_name) + ": received  " + uriAsString, Toast.LENGTH_LONG).show();
 
             pointFromIntent = (GeoPointDto) mGeoUriParser.fromUri(uriAsString, new GeoPointDto());
-            if (GeoPointDto.isEmpty(pointFromIntent)) pointFromIntent = null;
+            if (GeoPointDto.isEmpty(pointFromIntent)) {
+                pointFromIntent = null;
+
+                mGeoArea = mGeoUriParser.fromUri(uriAsString, new GeoPointDto[]{new GeoPointDto(), new GeoPointDto()});
+            }
         }
         return pointFromIntent;
     }

@@ -45,10 +45,10 @@ import de.k3b.android.androFotoFinder.imagedetail.ImageDetailActivityViewPager;
 import de.k3b.android.androFotoFinder.locationmap.GeoEditActivity;
 import de.k3b.android.androFotoFinder.locationmap.LocationMapFragment;
 import de.k3b.android.androFotoFinder.directory.DirectoryPickerFragment;
+import de.k3b.android.androFotoFinder.locationmap.MapGeoPickerActivity;
 import de.k3b.android.androFotoFinder.queries.FotoSql;
 import de.k3b.android.androFotoFinder.queries.FotoViewerParameter;
 import de.k3b.android.androFotoFinder.queries.Queryable;
-import de.k3b.android.osmdroid.ZoomUtil;
 import de.k3b.android.util.GarbageCollector;
 import de.k3b.android.util.IntentUtil;
 import de.k3b.android.util.SelectedFotos;
@@ -542,12 +542,16 @@ public class FotoGalleryActivity extends LocalizedActivity implements Common,
     private void openLatLonPicker() {
         mGalleryQueryParameter.mUseLatLon = true;
 
+        MapGeoPickerActivity.showActivity(this, null, null, mSelectedItems, null, 0);
+
+        /*
         final FragmentManager manager = getFragmentManager();
         LocationMapFragment dialog = new LocationMapFragment();
         dialog.defineNavigation(this.mGalleryQueryParameter.mFilter,
                 this.mGalleryQueryParameter.mCurrentLatLon, ZoomUtil.NO_ZOOM, mSelectedItems);
 
         dialog.show(manager, DLG_NAVIGATOR_TAG);
+        */
     }
 
 
